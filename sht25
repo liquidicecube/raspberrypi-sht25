@@ -1,0 +1,51 @@
+#! /bin/ksh
+### BEGIN INIT INFO
+# Provides:          sht25
+# Default-Start:     2 3 4 5
+# Default-Stop:      1
+# Short-Description: sht25 metrics publication
+# Description:       Publish temperature/humidity metrics to thinkspeak
+### END INIT INFO
+
+DIR=/home/pi/git/raspberrypi-sht25
+SERVICE="sht25.py"
+LOG="$DIR/sht25.log"
+
+function handler_start
+{
+	pgrep $SERVICE >/dev/null && { echo >&2 "$SERVICE already running"; exit 1; }
+	echo "Starting $SERVICE"
+	[[ -f $LOG ]] && mv $LOG $LOG.sav
+	nohup $DIR/sht25.py > $LOG 2>&1 &
+	handler_status
+}
+
+function handler_stop
+{
+	echo "Stopping $SERVICE"
+	pkill $SERVICE || echo >&2 "$SERVICE wasn't running"
+}
+
+function handler_restart
+{
+	handler_stop
+	handler_start	
+}
+
+function handler_status
+{
+	pgrep -a $SERVICE || echo >&2 "$SERVICE is not running"
+}
+
+case "$1" in
+  start)    handler_start ;;
+  stop)     handler_stop  ;;
+  restart)  handler_restart ;;
+  status)   handler_status ;;
+  *)
+	echo "Usage: $SCRIPTNAME {start|stop|restart|status}" >&2
+	exit 3
+	;;
+esac
+
+exit 0
