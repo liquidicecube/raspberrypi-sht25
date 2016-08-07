@@ -1,15 +1,12 @@
 #!/usr/bin/python -u
 
-import smbus
-import time
+import sys, time
 import httplib, urllib
-import email
 
-deviceAddr = 0x40
-measureTemperatureCmd   = 0xf3
-measureTemperatureDelay = 0.100
-measureHumidityCmd      = 0xf5
-measureHumidityDelay    = 0.050
+sys.path.append('../sht21_python')
+from sht21 import SHT21
+
+i2cBus                  = 1
 thingspeak_url          = "api.thinkspeak.com"
 thingspeak_api_key      = "VTJZEP5XT2TRVJCX"
 sampleDelaySecs         = 300
@@ -20,30 +17,16 @@ alertHumidityMax        = 50
 alertTemperatureMin     = 67
 alertTemperatureMax     = 72
 
-# Sends byte opcode to device and measures 16-bit value
-def measure(bus, addr, cmd, delay):
-    bus.write_byte(addr, cmd)
-    time.sleep(delay)
-    msb = bus.read_byte(addr)
-    lsb = bus.read_byte(addr)
-    return(msb << 8) + lsb
-
-bus = smbus.SMBus(1)
+sht21Sensor = SHT21(i2cBus)
 while True:
     print time.ctime()
 
-    tempEncoded = measure(bus, deviceAddr, measureTemperatureCmd, measureTemperatureDelay)
-    humidityEncoded = measure(bus, deviceAddr, measureHumidityCmd, measureHumidityDelay)
+    tempCelsius = sht21Sensor.read_temperature()
+    tempFarenheit = tempCelsius * 9.0 / 5 + 32
+    print "Temperature: %.2f degrees farenheit" % tempFarenheit
 
-    tempCelsius = -46.85 + 175.72 * (float(tempEncoded) / 65536)
-    tempFarenheit = round((tempCelsius * 9/5 + 32), 2)
-    print "tempEncoded: {0}".format(tempEncoded)
-    print "Temperature: {0} degrees farenheit".format(tempFarenheit)
-
-    humidityPercent = round(-6 + 125 * (float(humidityEncoded) / 65536), 2)
-    print "humidityEncoded: {0}".format(humidityEncoded)
-    print "Humidity: {0}%".format(humidityPercent)
-
+    humidityPercent = sht21Sensor.read_humidity()
+    print "Humidity: %.2f" % humidityPercent
 
     params = urllib.urlencode({'field1': tempFarenheit,
                                'field2': humidityPercent,
